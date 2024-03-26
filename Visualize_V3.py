@@ -5,35 +5,37 @@ import seaborn as sns
 import os
 import numpy as np
 import plotly.graph_objects as go
-import pyodbc
+# import pyodbc
+import pickle
 import plotly.express as px
 
 # Set the port number
 port = int(os.environ.get('PORT', 8888))
 
-#READ DATABASE FROM SERVER
-server = '10.16.157.42'
-database = 'RB_DATA'
 
-connection_string = 'DRIVER={ODBC Driver 17 for SQL Server};SERVER=' + server + ';DATABASE=' + database + ';Trusted_Connection=yes'
-conn = pyodbc.connect(connection_string)
-cursor = conn.cursor()
+# #READ DATABASE FROM SERVER
+# server = '10.16.157.42'
+# database = 'RB_DATA'
 
-# MARKET
-sql_query = '''
-SELECT * FROM USER_DATA.hiennpd3.CRAWL_TD_CIE_ORG
-'''
-cursor.execute(sql_query)
-rows = cursor.fetchall()
+# connection_string = 'DRIVER={ODBC Driver 17 for SQL Server};SERVER=' + server + ';DATABASE=' + database + ';Trusted_Connection=yes'
+# conn = pyodbc.connect(connection_string)
+# cursor = conn.cursor()
 
-columns = [column[0] for column in cursor.description]
-data_market = pd.DataFrame.from_records(rows, columns=columns)
+# # MARKET
+# sql_query = '''
+# SELECT * FROM USER_DATA.hiennpd3.CRAWL_TD_CIE_ORG
+# '''
+# cursor.execute(sql_query)
+# rows = cursor.fetchall()
+
+# columns = [column[0] for column in cursor.description]
+# data_market = pd.DataFrame.from_records(rows, columns=columns)
 
 
-data_vpb = pd.read_csv(r'C:\Users\hiennpd3\OneDrive - VPBank\AA Team\2. TD forecast model\3. Architecture\Package\Model V2\Mainmodel_result.csv')
+# data_vpb = pd.read_csv(r'C:\Users\hiennpd3\OneDrive - VPBank\AA Team\2. TD forecast model\3. Architecture\Package\Model V2\Mainmodel_result.csv')
 
-cursor.close()
-conn.close() 
+# cursor.close()
+# conn.close() 
 
 ########## SIDEBAR
 password = st.sidebar.text_input("Password:", type="password")
@@ -42,27 +44,31 @@ if password != "1111":
     st.stop()
 
 
-st.sidebar.markdown("1. Biến động thị trường")
+# st.sidebar.markdown("1. Biến động thị trường")
 
-# Hiển thị phân tích theo Term
-if st.sidebar.checkbox("Show report", True, key=2):
-    st.markdown("## **1. Dự báo biến động thị trường**")
-    selected_term = st.selectbox('Lựa chọn kỳ hạn ', data_market['Term'].unique())
-    filtered_data = data_market[data_market['Term'] == selected_term].sort_values('MMYYYY') 
-    market_graph = px.line(filtered_data,  x='MMYYYY', y='InterBank', title='LÃI SUẤT CUNG CẤP BỞI SBV')
-    market_graph.add_scatter(x=filtered_data['MMYYYY'], y=filtered_data['InterBank'], mode='lines', name='LS Liên Ngân Hàng')
-    market_graph.add_scatter(x=filtered_data['MMYYYY'], y=filtered_data['DiscountRate'], mode='lines', name='Lãi suất tái chiết khấu')
-    market_graph.add_scatter(x=filtered_data['MMYYYY'], y=filtered_data['RefinancingRate'], mode='lines', name='Lãi suất tái cấp vốn')
-    st.plotly_chart(market_graph)
-    st.markdown('Note: Nội dung dự báo sẽ được cập nhật trong tháng 3')
+# # Hiển thị phân tích theo Term
+# if st.sidebar.checkbox("Show report", True, key=2):
+#     st.markdown("## **1. Dự báo biến động thị trường**")
+#     selected_term = st.selectbox('Lựa chọn kỳ hạn ', data_market['Term'].unique())
+#     filtered_data = data_market[data_market['Term'] == selected_term].sort_values('MMYYYY') 
+#     market_graph = px.line(filtered_data,  x='MMYYYY', y='InterBank', title='LÃI SUẤT CUNG CẤP BỞI SBV')
+#     market_graph.add_scatter(x=filtered_data['MMYYYY'], y=filtered_data['InterBank'], mode='lines', name='LS Liên Ngân Hàng')
+#     market_graph.add_scatter(x=filtered_data['MMYYYY'], y=filtered_data['DiscountRate'], mode='lines', name='Lãi suất tái chiết khấu')
+#     market_graph.add_scatter(x=filtered_data['MMYYYY'], y=filtered_data['RefinancingRate'], mode='lines', name='Lãi suất tái cấp vốn')
+#     st.plotly_chart(market_graph)
+#     st.markdown('Note: Nội dung dự báo sẽ được cập nhật trong tháng 3')
 
+################
+## NHÁP
+data_all = pd.read_csv(r'C:\Users\admin\Desktop\Github\Crawling\x_test.csv')
+################
 st.sidebar.markdown("---")
 
 st.sidebar.markdown("2. EOP theo CIE điều chỉnh")
 
 if st.sidebar.checkbox("Show report"):
     #Sidebar
-    currencies = sorted(data_vpb['CURRENCY_2'].unique().tolist(), reverse=True) + ['All']
+    currencies = sorted(data_all['CURRENCY_2'].unique().tolist(), reverse=True) + ['All']
     currency_mapping = {0: "Non-VND", 1: "VND"}
     currencies_display = [currency_mapping.get(currency, currency) for currency in currencies]
     selected_currency = st.sidebar.selectbox('CURRENCY:', currencies_display)
@@ -126,13 +132,6 @@ if st.sidebar.checkbox("Show report"):
             INPUT_CIE_OV18M = round(INPUT_CIE_OV18M, 1)
         else:
             st.markdown(''':red[Value must be between 0-20%]''')
-
-    with columns[3]:
-        INPUT_CIE_SPECIAL = st.number_input("Special Payment(%)", value=0.0, step=0.1, format="%.1f")
-        if 0 <= INPUT_CIE_SPECIAL <= 20:
-            INPUT_CIE_SPECIAL = round(INPUT_CIE_SPECIAL, 1)
-        else:
-            st.markdown(''':red[Value must be between 0-20%]''')
     
     if st.button("Import plan CIE"):
         st.write('Button này đang dev ạ')
@@ -141,13 +140,30 @@ if st.sidebar.checkbox("Show report"):
 
     # Apply filters
     if selected_currency != 'All':
-        filtered_data = data_vpb[data_vpb['CURRENCY_2'] == selected_currency]
+        filtered_data = data_all[data_all['CURRENCY_2'] == selected_currency]
     else :
-        filtered_data = data_vpb
-    #DASHBOARD PART
-    st.markdown("#### **2.1 EOP**")
-    st.markdown("#### **2.2 NII**")
-    st.table(filtered_data) 
+        filtered_data = data_all
+    # #DASHBOARD PART
+    # st.markdown("#### **2.1 CHART**")
+    # Tải mô hình từ tệp
+    filename = 'best_model.pickle'
+    with open(filename, 'rb') as file:
+        loaded_model = pickle.load(file)
+    
+    x_va = filtered_data[(filtered_data['MONTH']== 3)& (filtered_data['YEAR']==2024)& (filtered_data['CURRENCY_2']== 1)]
+    mapping_input = { 0 : INPUT_CIE_U1M,
+                  1 : INPUT_CIE_1M3M,
+                  2 : INPUT_CIE_4M5M,
+                  3 : INPUT_CIE_6M9M,
+                  4 : INPUT_CIE_10M11M,
+                  5 : INPUT_CIE_12M18M,
+                  6 : INPUT_CIE_OV18M
+                }
+    x_va['CIE_Rate'] =  x_va['TERM_'].map(mapping_input)
+    
+    x_va['EOP_CB_FCST'] =  loaded_model.predict(x_va)
+    st.markdown("#### **2.2 DATA TABLE**")
+    st.table(x_va) 
     st.markdown('Note: Nội dung dự báo, Goodbook, Badbook, ... sẽ được cập nhật trong tháng 3')
 
 
